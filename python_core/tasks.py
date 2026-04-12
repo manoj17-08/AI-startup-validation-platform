@@ -35,11 +35,76 @@ def create_tasks(researcher, critic, planner):
         description=(
             "Based on the research and the critical feedback, develop a strategic roadmap. "
             "Address the specific risks raised by the Critic. "
-            "Provide a final 'Go/No-Go' recommendation and a unique value proposition that avoids the identified pitfalls."
+            "Provide a final 'Go/No-Go' recommendation and a unique value proposition that avoids the identified pitfalls.\n"
+            "You MUST output valid JSON exactly matching the expected output format without any extra text."
         ),
         expected_output=(
-            "A strategic roadmap document with a clear value proposition, "
-            "mitigation strategies for the identified risks, and a final verdict."
+            "A JSON object exactly matching this format:\n"
+            "{\n"
+            '  "executive_summary": {\n'
+            '    "startup_idea": "...",\n'
+            '    "problem_statement": "...",\n'
+            '    "target_users": "...",\n'
+            '    "verdict": "Build / Pivot / Kill",\n'
+            '    "key_reason": "1-line strongest reason",\n'
+            '    "pivot_suggestion": "Suggested direction if Pivot, else N/A"\n'
+            '  },\n'
+            '  "market_analysis": {\n'
+            '    "market_size": "Estimated size or \'Unknown - needs validation\'",\n'
+            '    "growth_trend": "High / Medium / Low",\n'
+            '    "demand_signals": ["...", "...", "..."],\n'
+            '    "key_insight": "1-line insight"\n'
+            '  },\n'
+            '  "competitor_analysis": {\n'
+            '    "competitors": [{"name": "...", "strength": "...", "weakness": "..."}],\n'
+            '    "competitive_insight": "Insight learned from playing field"\n'
+            '  },\n'
+            '  "risk_analysis": {\n'
+            '    "risks": ["...", "...", "...", "..."],\n'
+            '    "biggest_risk": "Most dangerous assumption"\n'
+            '  },\n'
+            '  "uvp": {\n'
+            '    "points": ["...", "...", "..."],\n'
+            '    "why_win": "Clear differentiation"\n'
+            '  },\n'
+            '  "roadmap": {\n'
+            '    "phase1": ["...", "..."],\n'
+            '    "phase2": ["...", "..."],\n'
+            '    "phase3": ["...", "..."]\n'
+            '  },\n'
+            '  "feasibility": {\n'
+            '    "market_demand": 8,\n'
+            '    "competition": 7,\n'
+            '    "execution": 6,\n'
+            '    "monetization": 5,\n'
+            '    "final_score": 6.5\n'
+            '  },\n'
+            '  "reality_check": {\n'
+            '    "persona": "e.g., College student",\n'
+            '    "reaction": "Realistic reaction logic",\n'
+            '    "will_pay": "Yes / No / Maybe"\n'
+            '  },\n'
+            '  "recommendation": {\n'
+            '    "decision": "Build / Pivot / Kill",\n'
+            '    "reasoning": ["...", "..."],\n'
+            '    "next_steps": ["...", "...", "..."]\n'
+            '  },\n'
+            '  "insight": "Hard-hitting final 1-line insight",\n'
+            '  "swot": {\n'
+            '    "strengths": ["...", "..."],\n'
+            '    "weaknesses": ["...", "..."],\n'
+            '    "opportunities": ["...", "..."],\n'
+            '    "threats": ["...", "..."]\n'
+            "  },\n"
+            '  "radar": [\n'
+            '    {"label": "Innovation", "value": 85},\n'
+            '    {"label": "Feasibility", "value": 70},\n'
+            '    {"label": "Market Size", "value": 90},\n'
+            '    {"label": "Scalability", "value": 80},\n'
+            '    {"label": "Moat", "value": 60}\n'
+            "  ]\n"
+            "}\n"
+            "Ensure radar values are between 0 and 100."
         ),
         agent=planner,
         context=[research_task, critique_task] # Depends on both

@@ -29,7 +29,7 @@ def create_agents():
         tools=[market_search_tool],
         llm=llm,
         allow_delegation=False,
-        max_rpm=10
+        max_rpm=3
     )
 
     # 2. Cynical Critic
@@ -46,7 +46,7 @@ def create_agents():
         ),
         llm=llm,
         allow_delegation=False,
-        max_rpm=10
+        max_rpm=5
     )
 
     # 3. Strategic Planner
@@ -62,7 +62,7 @@ def create_agents():
         ),
         llm=llm,
         allow_delegation=False,
-        max_rpm=10
+        max_rpm=5
     )
     
     return researcher, critic, planner

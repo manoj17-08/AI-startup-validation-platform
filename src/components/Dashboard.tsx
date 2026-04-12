@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertTriangle, Map, Terminal, Loader2, FileText, Download, type LucideIcon } from 'lucide-react';
-import { type AgentMessage, MOCK_DEBATE, MOCK_SWOT, MOCK_RADAR } from '../mockData';
+import { type AgentMessage } from '../mockData';
 import { generatePDFReport } from '../utils/pdfGenerator';
 import { SWOTAnalysis } from './SWOTAnalysis';
 import { RadarChart } from './RadarChart';
@@ -90,41 +90,82 @@ export const Dashboard: React.FC<DashboardProps> = ({ idea }) => {
         Critic: 'idle',
         Planner: 'idle'
     });
+    const [swotData, setSwotData] = useState<any>(null);
+    const [radarData, setRadarData] = useState<any>(null);
+    const [reportData, setReportData] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    // Simulation effect
     useEffect(() => {
-        let currentIndex = 0;
-
-        // Initial state
+        setMessages([]);
         setActiveAgents({ Researcher: 'thinking', Critic: 'idle', Planner: 'idle' });
+        setError(null);
+        setSwotData(null);
+        setRadarData(null);
+        setReportData(null);
 
-        const interval = setInterval(() => {
-            if (currentIndex >= MOCK_DEBATE.length) {
-                clearInterval(interval);
-                setActiveAgents({ Researcher: 'done', Critic: 'done', Planner: 'done' });
-                return;
+        const eventSource = new EventSource(`/api/stream?idea=${encodeURIComponent(idea)}`);
+
+        eventSource.addEventListener('message', (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                setMessages(prev => [...prev, data]);
+                
+                setActiveAgents(prev => {
+                    const next = { ...prev };
+                    next[data.agent] = 'thinking';
+                    Object.keys(next).forEach(key => {
+                        if (key !== data.agent && prev[key] === 'thinking') {
+                            next[key] = 'idle';
+                        }
+                    });
+                    return next;
+                });
+            } catch (err) {
+                console.error("Error parsing message", err);
             }
+        });
 
-            const msg = MOCK_DEBATE[currentIndex];
-            setMessages(prev => [...prev, msg]);
+        eventSource.addEventListener('completion', (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                const finalJson = JSON.parse(data.result);
+                
+                setSwotData(finalJson.swot);
+                setRadarData(finalJson.radar);
+                setReportData(finalJson);
+                
+                setActiveAgents({ Researcher: 'done', Critic: 'done', Planner: 'done' });
+                eventSource.close();
+            } catch (err) {
+                console.error("Error parsing completion output", err, event.data);
+                setActiveAgents({ Researcher: 'done', Critic: 'done', Planner: 'done' });
+                setError("Failed to parse the final result. The agents might not have returned pure JSON.");
+                eventSource.close();
+            }
+        });
 
-            // Update active status based on who's talking
-            setActiveAgents(prev => {
-                const next = { ...prev };
-                // Mark current speaker as thinking
-                next[msg.agent] = 'thinking';
-                // If switching agents, mark others as done/idle logic could be more complex but simple for now
-                if (currentIndex > 0 && MOCK_DEBATE[currentIndex - 1].agent !== msg.agent) {
-                    next[MOCK_DEBATE[currentIndex - 1].agent] = 'done';
+        const errorHandler = (errEvent: any) => {
+            let errorMsg = "Connection error. Is the backend running?";
+            try {
+                if (errEvent.data) {
+                    const data = JSON.parse(errEvent.data);
+                    errorMsg = data.error || errorMsg;
                 }
-                return next;
-            });
+            } catch (e) {}
 
-            currentIndex++;
-        }, 2500); // Delay between messages
+            console.error("SSE Error:", errEvent);
+            setError(errorMsg);
+            setActiveAgents({ Researcher: 'done', Critic: 'done', Planner: 'done' });
+            eventSource.close();
+        };
 
-        return () => clearInterval(interval);
-    }, []);
+        eventSource.addEventListener('error', errorHandler);
+        eventSource.onerror = errorHandler;
+
+        return () => {
+            eventSource.close();
+        };
+    }, [idea]);
 
     return (
         <div className="w-full max-w-7xl mx-auto p-4 md:p-8">
@@ -134,12 +175,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ idea }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-12 text-center"
             >
-                <div className="inline-flex items-center gap-2 text-slate-500 mb-2">
-                    <Terminal size={14} />
-                    <span className="text-sm font-mono">SESSION ID: {Math.random().toString(36).substring(7).toUpperCase()}</span>
-                </div>
                 <h2 className="text-3xl font-bold text-white mb-2">Evaluating: <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">"{idea}"</span></h2>
             </motion.div>
+
+            {error && (
+                <div className="mb-8 p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-start gap-4 text-red-400">
+                    <AlertTriangle className="shrink-0 mt-0.5" />
+                    <div>
+                        <h4 className="font-semibold mb-1">Validation Process Failed</h4>
+                        <p className="text-sm opacity-90">{error}</p>
+                    </div>
+                </div>
+            )}
 
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -167,17 +214,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ idea }) => {
             </div>
 
             {/* Advanced Analytics Section */}
-            {activeAgents.Planner === 'done' && (
+            {(swotData && radarData) && (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12"
                 >
                     <div className="lg:col-span-2">
-                        <SWOTAnalysis data={MOCK_SWOT} />
+                        <SWOTAnalysis data={swotData} />
                     </div>
                     <div className="bg-slate-900/50 rounded-3xl p-1 border border-slate-800">
-                        <RadarChart data={MOCK_RADAR} />
+                        <RadarChart data={radarData} />
                     </div>
                 </motion.div>
             )}
@@ -193,7 +240,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ idea }) => {
                         <motion.button
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            onClick={() => generatePDFReport(idea, messages)}
+                            onClick={() => generatePDFReport(idea, messages, reportData)}
                             className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
                         >
                             <Download size={20} />
@@ -243,4 +290,4 @@ export const Dashboard: React.FC<DashboardProps> = ({ idea }) => {
             </div>
         </div>
     );
-};
+}
