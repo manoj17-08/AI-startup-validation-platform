@@ -1,6 +1,6 @@
 # 🚀 Automated Startup Validator
 
-A high-fidelity AI-powered dashboard that validates startup ideas using autonomous agents. Built with **CrewAI**, **React**, **FastAPI**, and **Gemini**.
+A high-fidelity AI-powered dashboard that validates startup ideas using autonomous agents. Built with **CrewAI**, **React**, **FastAPI**, ,**Gemini**, **Tavily**
 
 ## ✨ Features
 
